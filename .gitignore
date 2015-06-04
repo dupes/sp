@@ -3,3 +3,4 @@ sp_x86
 sp_mips
 .project
 .cproject
+logs/myeasylog.log
