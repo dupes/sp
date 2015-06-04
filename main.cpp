@@ -35,7 +35,9 @@ void handleEcho()
 
 		while (true)
 		{
-			int bytesRead = sp.recv(buffer + bytesInBuffer, sizeof(buffer) - bytesInBuffer, 40);
+			int bytesRead = sp.recv(buffer + bytesInBuffer, sizeof(buffer) - bytesInBuffer, 100);
+
+			// LOG(INFO) << "bytes received: " << bytesRead;
 
 			if (bytesRead == 0 && bytesInBuffer > 0)
 				break;
@@ -51,10 +53,12 @@ void handleEcho()
 
 			for (int i = 0; i < bytesInBuffer; i++)
 			{
-				//s << buffer[i];
+				s << buffer[i];
 			}
 
 			LOG(INFO) << s.str();
+
+			usleep(40 * 1000);
 
 			int bytesSent = sp.send(buffer, bytesInBuffer);
 
@@ -94,8 +98,8 @@ void handleSend()
 
 		usleep(sleepTime * 1000);
 
-		int bytesToSend = rand() % 4095 + 1;
-		// int bytesToSend = rand() % 9 + 1;
+		// int bytesToSend = rand() % 4095 + 1;
+		int bytesToSend = rand() % 9 + 1;
 
 		stringstream s;
 
@@ -105,7 +109,7 @@ void handleSend()
 		{
 			buffer[i] = hex[rand() % 15];
 
-			//s << buffer[i];
+			s << buffer[i];
 		}
 
 		LOG(INFO) << s.str();
@@ -138,6 +142,10 @@ void handleSend()
 			{
 				LOG(ERROR) << "buffers do not match";
 			}
+		}
+		else
+		{
+			LOG(ERROR) << "data not echoed";
 		}
 	}
 }
