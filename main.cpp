@@ -6,8 +6,11 @@
 #include <stdlib.h>
 
 #include "SerialPort.h"
+#include "easylogging++.h"
 
 using namespace std;
+
+INITIALIZE_EASYLOGGINGPP
 
 void printUsage()
 {
@@ -23,33 +26,53 @@ SerialPort sp;
 void handleEcho()
 {
 	unsigned char buffer[4096];
-	int bytesRead;
 
 	cout << "starting echo" << endl;
 
 	while (true)
 	{
-		bytesRead = sp.recv(buffer, sizeof(buffer), 10000);
+		int bytesInBuffer = 0;
 
-		if (bytesRead > 0)
+		while (true)
 		{
-			cout << "read " << bytesRead << " bytes" << endl;
+			int bytesRead = sp.recv(buffer + bytesInBuffer, sizeof(buffer) - bytesInBuffer, 40);
 
-			//int sleepTime = rand() % 10000;
+			if (bytesRead == 0 && bytesInBuffer > 0)
+				break;
 
-			//usleep(sleepTime * 1000);
+			bytesInBuffer += bytesRead;
+		}
 
-			int bytesSent = sp.send(buffer, bytesRead);
+		if (bytesInBuffer > 0)
+		{
+			stringstream s;
 
-			if (bytesSent < bytesRead)
+			s << "read " << bytesInBuffer << " bytes: ";
+
+			for (int i = 0; i < bytesInBuffer; i++)
 			{
-				cout << "bytes sent != bytes read" << endl;
+				//s << buffer[i];
+			}
+
+			LOG(INFO) << s.str();
+
+			int bytesSent = sp.send(buffer, bytesInBuffer);
+
+			if (bytesSent < bytesInBuffer)
+			{
+				LOG(ERROR) << "bytes sent != bytes read";
 			}
 		}
 		else
 		{
 			perror("bytes read : ");
 		}
+
+		int sleepTime = rand() % 5000 + 40;
+
+		LOG(INFO) << "sleeping for " << sleepTime << " ms";
+
+		usleep(sleepTime * 1000);
 	}
 }
 
@@ -61,67 +84,84 @@ void handleSend()
 	unsigned char buffer[4096];
 	unsigned char recvBuffer[4096];
 
-	cout << "starting send" << endl;
+	LOG(INFO) << "starting send";
 
 	while (true)
 	{
-		int sleepTime = rand() % 1000;
+		int sleepTime = rand() % 1000 + 40;
 
-		cout << "sleeping for " << sleepTime << " ms" << endl;
+		LOG(INFO) << "sleeping for " << sleepTime << " ms";
 
 		usleep(sleepTime * 1000);
 
-		// int bytesToSend = rand() % 4095 + 1;
-		int bytesToSend = rand() % 9 + 1;
+		int bytesToSend = rand() % 4095 + 1;
+		// int bytesToSend = rand() % 9 + 1;
 
-		cout << "generating " << bytesToSend << " random hex digits to send" << endl;
+		stringstream s;
+
+		s << "generating " << bytesToSend << " random hex digits to send: ";
 
 		for (int i = 0; i < bytesToSend; i++)
 		{
 			buffer[i] = hex[rand() % 15];
+
+			//s << buffer[i];
 		}
+
+		LOG(INFO) << s.str();
 
 		int bytesSent = sp.send(buffer, bytesToSend);
 
 		if (bytesSent != bytesToSend)
 		{
-			cout << "wtf aren't all bytes being sent" << endl;
+			LOG(ERROR) << "bytes sent does not match bytesToSend " << bytesSent << ", " << bytesToSend;
 		}
 
 		int bytesInBuffer = 0;
 
 		while (true)
 		{
-			// int bytesRead = sp.recv(recvBuffer + bytesInBuffer, bytesToSend - bytesInBuffer, 10000);
-			int bytesRead = sp.recv(recvBuffer + bytesInBuffer, 1, 10000);
+			int bytesRead = sp.recv(recvBuffer + bytesInBuffer, bytesToSend - bytesInBuffer, 10000);
 
 			if (bytesRead <= 0)
 				break;
 
-			cout << "read " << bytesRead << endl;
-
 			bytesInBuffer += bytesRead;
-
-			cout << "read " << bytesInBuffer << " of " << bytesToSend << endl;
 
 			if (bytesInBuffer == bytesToSend)
 				break;
 		}
 
-		if (bytesInBuffer != bytesToSend)
-		{
-			cout << "expected " << bytesToSend << " bytes but received " << bytesInBuffer << endl;
-			perror(" recv : ");
-		}
-		else
+		if (bytesInBuffer == bytesToSend)
 		{
 			if (strncmp((const char *)buffer, (const char *)recvBuffer, bytesToSend) != 0)
 			{
-				cout << "buffers do not match" << endl;
+				LOG(ERROR) << "buffers do not match";
 			}
 		}
 	}
 }
+
+//===============================================================================================
+
+void initLogging()
+{
+
+	el::Configurations c;
+
+	c.setToDefault();
+
+	c.setGlobally(el::ConfigurationType::ToFile, "true");
+	c.setGlobally(el::ConfigurationType::Filename, "sptest.log");
+
+	el::Loggers::setDefaultConfigurations(c, true);
+
+	LOG(INFO) << "***************************";
+	LOG(INFO) << "** logging started       **";
+	LOG(INFO) << "***************************";
+}
+
+//===============================================================================================
 
 int main(int argc, char **argv)
 {
@@ -130,6 +170,8 @@ int main(int argc, char **argv)
 		printUsage();
 		return 0;
 	}
+
+	initLogging();
 
 	char *serialPortName = argv[1];
 	bool echo = ((strcmp(argv[2], "true") == 0) ? true : false);

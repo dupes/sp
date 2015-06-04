@@ -60,7 +60,18 @@ void SerialPort::close()
 
 int SerialPort::send(unsigned char *buffer, int length)
 {
-	return write(m_fd, buffer, length);
+	ssize_t bytesSent;
+	ssize_t totalBytesSent = 0;
+
+	while (totalBytesSent < length)
+	{
+		if ((bytesSent = write(m_fd, buffer, length)) < 0)
+			return bytesSent;
+
+		totalBytesSent += bytesSent;
+	}
+
+	return totalBytesSent;
 }
 
 /*********************************************************************************/
