@@ -21,6 +21,7 @@ using namespace std;
 class SerialPort
 {
 private:
+	struct termios m_tio;
 
 	string m_serialPort;
 	int m_fd;

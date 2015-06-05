@@ -22,8 +22,6 @@ SerialPort::~SerialPort()
 
 bool SerialPort::open(string serialPort)
 {
-	struct termios tio;
-
 	m_serialPort = serialPort;
 
 	m_fd = ::open(m_serialPort.c_str(), O_RDWR | O_NOCTTY | O_NDELAY); //Open in non blocking read/write mode
@@ -31,17 +29,17 @@ bool SerialPort::open(string serialPort)
 	if (m_fd == -1)
 		return false;
 
-	tcgetattr(m_fd, &tio);
+	tcgetattr(m_fd, &m_tio);
 
-	tio.c_cflag = B19200 | CS8 | CLOCAL | CREAD;		//<Set baud rate
+	m_tio.c_cflag = B19200 | CS8 | CLOCAL | CREAD;		//<Set baud rate
 	// tio.c_cflag = B9600 | CS8 | CLOCAL | CREAD;		//<Set baud rate
-	tio.c_iflag = IGNPAR;
-	tio.c_oflag = 0;
-	tio.c_lflag = 0;
+	m_tio.c_iflag = IGNPAR;
+	m_tio.c_oflag = 0;
+	m_tio.c_lflag = 0;
 
 	tcflush(m_fd, TCIFLUSH);
 
-	tcsetattr(m_fd, TCSANOW, &tio);
+	tcsetattr(m_fd, TCSANOW, &m_tio);
 
 	return true;
 }
