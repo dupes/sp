@@ -142,6 +142,10 @@ void handleSend()
 			{
 				LOG(ERROR) << "buffers do not match";
 			}
+			else
+			{
+				LOG(INFO) << "Matching message received";
+			}
 		}
 		else
 		{
