@@ -40,6 +40,8 @@ public:
 
 	int send(unsigned char *buffer, int length);
 	int recv(unsigned char *buffer, int length, int waitMS);
+
+	int tcflow(int flag);
 };
 
 #endif /* CEA2045SERIALPORT_H_ */

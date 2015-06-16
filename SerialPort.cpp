@@ -116,3 +116,9 @@ int SerialPort::recv(unsigned char *buffer, int length, int waitMS)
 	return 0;
 }
 
+/*********************************************************************************/
+
+int SerialPort::tcflow(int flag)
+{
+	return ::tcflow(m_fd, flag);
+}

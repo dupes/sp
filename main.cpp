@@ -23,7 +23,7 @@ void printUsage()
 
 SerialPort sp;
 
-void handleEcho()
+void handleEcho(bool flowControl)
 {
 	unsigned char buffer[4096];
 
@@ -53,14 +53,30 @@ void handleEcho()
 
 			for (int i = 0; i < bytesInBuffer; i++)
 			{
-				s << buffer[i];
+				// s << buffer[i];
 			}
 
 			LOG(INFO) << s.str();
 
 			usleep(40 * 1000);
 
+			if (flowControl)
+				// sp.tcflow(TCOON);
+				system("/bin/echo \"1\" > /sys/class/gpio/gpio21/value");
+
 			int bytesSent = sp.send(buffer, bytesInBuffer);
+
+			if (flowControl)
+			{
+				// sleep for amount of time required to transfer the message
+				int sleepTime = ((double)bytesSent * 8.0) / 19200.0 * 1000 * 1000 * 3;
+
+				LOG(INFO) << "delay: " << sleepTime << "us";
+
+				usleep(sleepTime);
+
+				system("/bin/echo \"0\" > /sys/class/gpio/gpio21/value");
+			}
 
 			if (bytesSent < bytesInBuffer)
 			{
@@ -80,7 +96,7 @@ void handleEcho()
 	}
 }
 
-void handleSend()
+void handleSend(bool flowControl)
 {
 	char hex[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8',
 			'9', 'A', 'B', 'C', 'D', 'E', 'F', 'G'};
@@ -99,7 +115,7 @@ void handleSend()
 		usleep(sleepTime * 1000);
 
 		// int bytesToSend = rand() % 4095 + 1;
-		int bytesToSend = rand() % 9 + 1;
+		int bytesToSend = rand() % 4090 + 1;
 
 		stringstream s;
 
@@ -109,12 +125,28 @@ void handleSend()
 		{
 			buffer[i] = hex[rand() % 15];
 
-			s << buffer[i];
+			// s << buffer[i];
 		}
 
 		LOG(INFO) << s.str();
 
+		if (flowControl)
+			system("/bin/echo \"1\" > /sys/class/gpio/gpio21/value");
+			// sp.tcflow(TCOON);
+
 		int bytesSent = sp.send(buffer, bytesToSend);
+
+		if (flowControl)
+		{
+			// sleep for amount of time required to transfer the message
+			int sleepTime = ((double)bytesSent * 8.0) / 19200.0 * 1000 * 1000 * 5;
+
+			LOG(INFO) << "delay: " << sleepTime << "us";
+
+			usleep(sleepTime);
+
+			system("/bin/echo \"0\" > /sys/class/gpio/gpio21/value");
+		}
 
 		if (bytesSent != bytesToSend)
 		{
@@ -140,17 +172,19 @@ void handleSend()
 		{
 			if (strncmp((const char *)buffer, (const char *)recvBuffer, bytesToSend) != 0)
 			{
-				LOG(ERROR) << "buffers do not match";
+				LOG(ERROR) << "buffers do not match FAIL " << bytesToSend;
 			}
 			else
 			{
-				LOG(INFO) << "Matching message received";
+				LOG(INFO) << "Matching message received SUCCESS " << bytesToSend;
 			}
 		}
 		else
 		{
-			LOG(ERROR) << "data not echoed";
+			LOG(ERROR) << "data not echoed FAIL " << bytesToSend << " bytes read " << bytesInBuffer;
 		}
+
+		sleep(4);
 	}
 }
 
@@ -177,7 +211,7 @@ void initLogging()
 
 int main(int argc, char **argv)
 {
-	if (argc != 3)
+	if (argc != 4)
 	{
 		printUsage();
 		return 0;
@@ -186,7 +220,9 @@ int main(int argc, char **argv)
 	initLogging();
 
 	char *serialPortName = argv[1];
+
 	bool echo = ((strcmp(argv[2], "true") == 0) ? true : false);
+	bool flowControl = ((strcmp(argv[3], "true") == 0) ? true : false);
 
 	if (!sp.open(serialPortName))
 	{
@@ -196,11 +232,11 @@ int main(int argc, char **argv)
 
 	if (echo)
 	{
-		handleEcho();
+		handleEcho(flowControl);
 	}
 	else
 	{
-		handleSend();
+		handleSend(flowControl);
 	}
 
 	return 0;
